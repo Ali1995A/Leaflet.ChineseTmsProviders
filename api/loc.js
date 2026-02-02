@@ -9,12 +9,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  const upstream = process.env.VPS_LOC_ENDPOINT;
+  // For maximum reliability, default to the VPS origin over HTTP.
+  // You can override this in Vercel env vars (recommended) with:
+  //   VPS_LOC_ENDPOINT=https://loc.maps.linktime.link/loc
+  const upstream = process.env.VPS_LOC_ENDPOINT || "http://142.171.179.15/loc";
   const token = process.env.VPS_LOC_TOKEN;
-  if (!upstream) {
-    res.status(500).json({ error: "missing_upstream" });
-    return;
-  }
   if (!token) {
     res.status(500).json({ error: "missing_token" });
     return;
@@ -32,12 +31,18 @@ export default async function handler(req, res) {
   }
 
   try {
+    const headers = {
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`
+    };
+    // When calling the VPS by IP, ensure nginx routes to the correct vhost.
+    if (upstream.startsWith("http://142.171.179.15/")) {
+      headers.host = "loc.maps.linktime.link";
+    }
+
     const r = await fetch(upstream, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`
-      },
+      headers,
       body: JSON.stringify(payload)
     });
 
@@ -47,4 +52,3 @@ export default async function handler(req, res) {
     res.status(502).json({ error: "upstream_failed" });
   }
 }
-
