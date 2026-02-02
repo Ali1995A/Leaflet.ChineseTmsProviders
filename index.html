@@ -21,15 +21,37 @@
         font-style: normal;
         font-display: swap;
       }
+      :root {
+        --bg: #fff6fb;
+        --card: rgba(255, 255, 255, 0.82);
+        --card-stroke: rgba(255, 105, 180, 0.22);
+        --shadow: 0 14px 34px rgba(255, 105, 180, 0.18);
+        --shadow-strong: 0 18px 44px rgba(255, 105, 180, 0.26);
+        --text: #2a1630;
+        --text-subtle: rgba(42, 22, 48, 0.72);
+        --pink: #ff4da6;
+        --pink-2: #ff7cc6;
+      }
       html,
       body {
         height: 100%;
         margin: 0;
+        background: radial-gradient(
+            1400px 800px at 20% 0%,
+            rgba(255, 77, 166, 0.16),
+            rgba(255, 255, 255, 0) 55%
+          ),
+          radial-gradient(
+            1200px 700px at 90% 10%,
+            rgba(122, 124, 255, 0.14),
+            rgba(255, 255, 255, 0) 58%
+          ),
+          var(--bg);
       }
       #map {
         height: 100%;
         width: 100%;
-        background: #0b0f17;
+        background: linear-gradient(180deg, #ffe6f4 0%, #fff6fb 65%);
       }
       .topbar {
         position: fixed;
@@ -49,18 +71,19 @@
         display: flex;
         gap: 8px;
         align-items: center;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: rgba(20, 24, 33, 0.78);
-        color: #fff;
+        padding: 9px 11px;
+        border-radius: 14px;
+        background: var(--card);
+        border: 1px solid var(--card-stroke);
+        color: var(--text);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        box-shadow: var(--shadow);
       }
       .panel label {
         font: 13px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
           "PingFang SC", "Microsoft YaHei", sans-serif;
-        opacity: 0.9;
+        color: var(--text-subtle);
       }
       .bilingual {
         display: inline-flex;
@@ -82,27 +105,38 @@
         letter-spacing: 0.4px;
         font-variant-ligatures: none;
         font-feature-settings: "liga" 0, "calt" 0;
-        opacity: 0.92;
+        color: rgba(255, 77, 166, 0.92);
       }
       .panel select,
       .panel button {
         font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
           "PingFang SC", "Microsoft YaHei", sans-serif;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.06);
-        color: #fff;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 77, 166, 0.22);
+        background: rgba(255, 255, 255, 0.76);
+        color: var(--text);
         padding: 8px 10px;
+      }
+      .panel select {
+        padding-right: 26px;
+      }
+      .panel select:focus,
+      .panel button:focus {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(255, 77, 166, 0.16);
       }
       .panel button .bilingual {
         align-items: center;
       }
       .panel button {
-        padding: 8px 10px;
-      }
-      .panel button {
         cursor: pointer;
         white-space: nowrap;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 77, 166, 0.18),
+          rgba(255, 255, 255, 0.82)
+        );
+        border-color: rgba(255, 77, 166, 0.26);
       }
       .panel button:active {
         transform: translateY(1px);
@@ -113,13 +147,34 @@
         bottom: calc(env(safe-area-inset-bottom) + 14px);
         transform: translateX(-50%);
         z-index: 1000;
-        background: rgba(0, 0, 0, 0.72);
-        color: #fff;
-        padding: 8px 10px;
-        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--text);
+        border: 1px solid rgba(255, 77, 166, 0.22);
+        padding: 9px 12px;
+        border-radius: 14px;
+        box-shadow: var(--shadow-strong);
         font: 13px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
           "PingFang SC", "Microsoft YaHei", sans-serif;
         display: none;
+      }
+
+      /* Leaflet controls: soft iOS pink glass */
+      .leaflet-control-zoom a,
+      .leaflet-control-layers-toggle,
+      .leaflet-bar a {
+        background: rgba(255, 255, 255, 0.88) !important;
+        color: var(--text) !important;
+        border: 1px solid rgba(255, 77, 166, 0.22) !important;
+        box-shadow: var(--shadow) !important;
+      }
+      .leaflet-bar a:hover {
+        background: rgba(255, 255, 255, 0.94) !important;
+      }
+      .leaflet-control-scale-line {
+        background: rgba(255, 255, 255, 0.86) !important;
+        color: var(--text) !important;
+        border: 1px solid rgba(255, 77, 166, 0.22) !important;
+        box-shadow: var(--shadow) !important;
       }
     </style>
   </head>
