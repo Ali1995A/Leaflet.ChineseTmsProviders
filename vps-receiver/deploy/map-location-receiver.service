@@ -1,0 +1,21 @@
+[Unit]
+Description=Map Location Receiver
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/map-location-receiver
+Environment=PORT=8787
+Environment=OUT_DIR=/var/lib/map-location-receiver
+Environment=OUT_FILE=/var/lib/map-location-receiver/locations.jsonl
+# Optional: set a shared token and match it in app-config.js (report.token)
+Environment=LOC_TOKEN=change-me
+# Optional: tighten CORS
+Environment=CORS_ORIGIN=https://maps.linktime.link
+ExecStart=/usr/bin/node /opt/map-location-receiver/server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+

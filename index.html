@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Map Viewer</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      #map {
+        height: 100%;
+        width: 100%;
+        background: #0b0f17;
+      }
+      .topbar {
+        position: fixed;
+        left: env(safe-area-inset-left);
+        right: env(safe-area-inset-right);
+        top: env(safe-area-inset-top);
+        padding: 10px;
+        z-index: 1000;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      .panel {
+        pointer-events: auto;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(20, 24, 33, 0.78);
+        color: #fff;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      }
+      .panel label {
+        font: 13px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+        opacity: 0.9;
+      }
+      .panel select,
+      .panel button {
+        font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+        padding: 8px 10px;
+      }
+      .panel button {
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .panel button:active {
+        transform: translateY(1px);
+      }
+      .hint {
+        position: fixed;
+        left: 50%;
+        bottom: calc(env(safe-area-inset-bottom) + 14px);
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.72);
+        color: #fff;
+        padding: 8px 10px;
+        border-radius: 10px;
+        font: 13px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="panel" role="group" aria-label="Map controls">
+        <label for="provider">图源</label>
+        <select id="provider">
+          <option value="GaoDe">高德</option>
+          <option value="TianDiTu">天地图</option>
+          <option value="Tencent">腾讯</option>
+          <option value="Google">Google(google.cn)</option>
+          <option value="Geoq">GeoQ</option>
+          <option value="OSM">OSM</option>
+        </select>
+        <label for="mode">模式</label>
+        <select id="mode">
+          <option value="sat">卫星</option>
+          <option value="road">道路</option>
+        </select>
+        <button id="reset" type="button">复位</button>
+        <button id="locate" type="button">定位</button>
+        <button id="share" type="button">复制链接</button>
+      </div>
+      <div class="panel" aria-label="Status">
+        <span id="status" style="font: 13px/1.2 system-ui">就绪</span>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div id="hint" class="hint"></div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="./src/leaflet.ChineseTmsProviders.js"></script>
+    <script src="./app-config.js"></script>
+    <script>
+      (function () {
+        const statusEl = document.getElementById("status");
+        const hintEl = document.getElementById("hint");
+        const providerEl = document.getElementById("provider");
+        const modeEl = document.getElementById("mode");
+        const resetBtn = document.getElementById("reset");
+        const locateBtn = document.getElementById("locate");
+        const shareBtn = document.getElementById("share");
+
+        const PRESETS = {
+          GaoDe: { sat: "Satellite.Map", labels: "Satellite.Annotion" },
+          TianDiTu: { sat: "Satellite.Map", labels: "Satellite.Annotion" },
+          Tencent: { sat: "Satellite.Map", labels: null },
+          Google: { sat: "Satellite.Map", labels: "Satellite.Annotion" },
+          Geoq: { sat: "Normal.Map", labels: null },
+          OSM: { sat: "Normal.Map", labels: null }
+        };
+
+        function setStatus(text) {
+          statusEl.textContent = text;
+        }
+
+        let hintTimer = null;
+        function showHint(text, ms = 1400) {
+          hintEl.textContent = text;
+          hintEl.style.display = "block";
+          if (hintTimer) window.clearTimeout(hintTimer);
+          hintTimer = window.setTimeout(() => {
+            hintEl.style.display = "none";
+          }, ms);
+        }
+
+        function getConfig() {
+          const cfg = (window.APP_CONFIG && window.APP_CONFIG.default) || {};
+          return {
+            title: (window.APP_CONFIG && window.APP_CONFIG.title) || "Map Viewer",
+            center: cfg.center || { lat: 31.2304, lng: 121.4737 },
+            zoom: Number.isFinite(cfg.zoom) ? cfg.zoom : 12,
+            provider: cfg.provider || "GaoDe",
+            mode: cfg.mode === "road" ? "road" : "sat",
+            autoLocate:
+              cfg.autoLocate === "always" || cfg.autoLocate === "once"
+                ? cfg.autoLocate
+                : "off",
+            autoLocateZoom:
+              Number.isFinite(cfg.autoLocateZoom) && cfg.autoLocateZoom >= 0
+                ? cfg.autoLocateZoom
+                : 14,
+            report: {
+              enabled: !!(cfg.report && cfg.report.enabled),
+              endpoint: (cfg.report && cfg.report.endpoint) || "",
+              token: (cfg.report && cfg.report.token) || "",
+              sendOnLocate:
+                cfg.report && typeof cfg.report.sendOnLocate === "boolean"
+                  ? cfg.report.sendOnLocate
+                  : true,
+              intervalMinutes:
+                cfg.report &&
+                Number.isFinite(cfg.report.intervalMinutes) &&
+                cfg.report.intervalMinutes > 0
+                  ? cfg.report.intervalMinutes
+                  : 0
+            },
+            sat: cfg.sat || "Satellite.Map",
+            labels: cfg.labels || "Satellite.Annotion",
+            tianDiTuKey: cfg.tianDiTuKey || ""
+          };
+        }
+
+        function parseQuery() {
+          const q = new URLSearchParams(location.search);
+          const lat = q.get("lat");
+          const lng = q.get("lng");
+          const z = q.get("z");
+          return {
+            lat: lat != null ? Number(lat) : null,
+            lng: lng != null ? Number(lng) : null,
+            z: z != null ? Number(z) : null,
+            provider: q.get("provider"),
+            mode: q.get("mode"),
+            autoLocate: q.get("autoLocate"),
+            sat: q.get("sat"),
+            labels: q.get("labels"),
+            tianDiTuKey: q.get("tianDiTuKey")
+          };
+        }
+
+        const config = getConfig();
+        document.title = config.title;
+
+        const q = parseQuery();
+        const initialCenter = {
+          lat:
+            Number.isFinite(q.lat) && Math.abs(q.lat) <= 90
+              ? q.lat
+              : config.center.lat,
+          lng:
+            Number.isFinite(q.lng) && Math.abs(q.lng) <= 180
+              ? q.lng
+              : config.center.lng
+        };
+        const initialZoom =
+          Number.isFinite(q.z) && q.z >= 0 && q.z <= 22 ? q.z : config.zoom;
+        const initialProvider = q.provider || config.provider;
+        const initialMode = q.mode === "road" ? "road" : config.mode;
+        const initialAutoLocate =
+          q.autoLocate === "1" || q.autoLocate === "true"
+            ? "always"
+            : q.autoLocate === "0" || q.autoLocate === "false"
+              ? "off"
+              : config.autoLocate;
+        const preset = PRESETS[initialProvider] || PRESETS.GaoDe;
+        const initialSat = q.sat || config.sat || preset.sat;
+        const initialLabels =
+          q.labels != null ? q.labels : config.labels || preset.labels;
+        const tianDiTuKey = q.tianDiTuKey || config.tianDiTuKey || "";
+
+        providerEl.value = initialProvider;
+        modeEl.value = initialMode;
+
+        const map = L.map("map", {
+          center: [initialCenter.lat, initialCenter.lng],
+          zoom: initialZoom,
+          zoomControl: true
+        });
+
+        map.attributionControl.setPrefix(false);
+        L.control
+          .scale({ metric: true, imperial: false, maxWidth: 120, updateWhenIdle: true })
+          .addTo(map);
+
+        let currentBase = null;
+        let currentLabels = null;
+        let selectedSat = initialSat;
+        let selectedLabels = initialLabels;
+        let selectedMode = initialMode;
+
+        function getOrCreateDeviceId() {
+          try {
+            const key = "mapViewer:deviceId";
+            const existing = localStorage.getItem(key);
+            if (existing) return existing;
+            const id =
+              (crypto && crypto.randomUUID && crypto.randomUUID()) ||
+              `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+            localStorage.setItem(key, id);
+            return id;
+          } catch (_) {
+            return `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+          }
+        }
+
+        const deviceId = getOrCreateDeviceId();
+        let reportedThisSession = false;
+
+        async function reportLocation(payload) {
+          if (!config.report.enabled) return;
+          if (!config.report.endpoint) return;
+          if (reportedThisSession) return;
+          reportedThisSession = true;
+
+          const body = JSON.stringify(payload);
+          const headers = { "content-type": "application/json" };
+          if (config.report.token) headers.authorization = `Bearer ${config.report.token}`;
+
+          // Prefer sendBeacon if available (more reliable on unload), else fetch keepalive.
+          try {
+            if (navigator.sendBeacon) {
+              const blob = new Blob([body], { type: "application/json" });
+              const ok = navigator.sendBeacon(config.report.endpoint, blob);
+              if (ok) return;
+            }
+          } catch (_) {}
+
+          try {
+            await fetch(config.report.endpoint, {
+              method: "POST",
+              headers,
+              body,
+              keepalive: true,
+              mode: "cors"
+            });
+          } catch (e) {
+            // Best-effort; ignore network errors.
+            console.warn("reportLocation failed", e);
+          }
+        }
+
+        function makeLayer(type) {
+          const options = {};
+          if (type.startsWith("TianDiTu.") && tianDiTuKey) options.key = tianDiTuKey;
+          return L.tileLayer.chinaProvider(type, options);
+        }
+
+        function hasLayer(provider, group, variant) {
+          const prov = L.TileLayer.ChinaProvider.providers[provider];
+          if (!prov) return false;
+          const bucket = prov[group];
+          if (!bucket) return false;
+          return Object.prototype.hasOwnProperty.call(bucket, variant);
+        }
+
+        function chooseSafeLayers(provider) {
+          const p = PRESETS[provider] || PRESETS.GaoDe;
+          // Mode decides the target layers.
+          let sat = null;
+          let labels = null;
+
+          if (selectedMode === "road") {
+            // Prefer "Normal.Map" and, for TianDiTu, the separate annotation layer.
+            if (provider === "TianDiTu") {
+              sat = "Normal.Map";
+              labels = "Normal.Annotion";
+            } else {
+              sat = "Normal.Map";
+              labels = null;
+            }
+          } else {
+            sat = selectedSat || p.sat;
+            labels = selectedLabels != null ? selectedLabels : p.labels;
+          }
+
+          // Validate "group.variant" exists; fallback to preset.
+          const satParts = String(sat).split(".");
+          if (satParts.length !== 2 || !hasLayer(provider, satParts[0], satParts[1])) {
+            sat = selectedMode === "road" ? "Normal.Map" : p.sat;
+          }
+          if (labels) {
+            const lblParts = String(labels).split(".");
+            if (
+              lblParts.length !== 2 ||
+              !hasLayer(provider, lblParts[0], lblParts[1])
+            ) {
+              labels = selectedMode === "road" ? null : p.labels;
+            }
+          }
+          return { sat, labels };
+        }
+
+        function setLayers(provider, sat, labels) {
+          setStatus("切换图层…");
+          const baseType = `${provider}.${sat}`;
+          const labelsType = labels ? `${provider}.${labels}` : null;
+
+          try {
+            if (currentBase) map.removeLayer(currentBase);
+            if (currentLabels) map.removeLayer(currentLabels);
+            currentLabels = null;
+
+            currentBase = makeLayer(baseType);
+            currentBase.addTo(map);
+
+            // Some providers have no labels for some layer groups.
+            if (labelsType) {
+              currentLabels = makeLayer(labelsType);
+              currentLabels.addTo(map);
+            }
+            setStatus(`${provider} · ${sat}${labels ? " + " + labels : ""}`);
+          } catch (e) {
+            console.error(e);
+            setStatus("图层切换失败");
+            showHint("图层切换失败：请换一个图源/图层组合");
+          }
+        }
+
+        // Default layers
+        {
+          const chosen = chooseSafeLayers(initialProvider);
+          selectedSat = chosen.sat;
+          selectedLabels = chosen.labels;
+          setLayers(initialProvider, selectedSat, selectedLabels);
+        }
+
+        providerEl.addEventListener("change", () => {
+          const provider = providerEl.value;
+          const chosen = chooseSafeLayers(provider);
+          selectedSat = chosen.sat;
+          selectedLabels = chosen.labels;
+          setLayers(provider, selectedSat, selectedLabels);
+        });
+
+        modeEl.addEventListener("change", () => {
+          selectedMode = modeEl.value === "road" ? "road" : "sat";
+          const provider = providerEl.value;
+          const chosen = chooseSafeLayers(provider);
+          selectedSat = chosen.sat;
+          selectedLabels = chosen.labels;
+          setLayers(provider, selectedSat, selectedLabels);
+        });
+
+        resetBtn.addEventListener("click", () => {
+          providerEl.value = config.provider || "GaoDe";
+          modeEl.value = config.mode === "road" ? "road" : "sat";
+          selectedMode = modeEl.value;
+
+          const provider = providerEl.value;
+          const chosen = chooseSafeLayers(provider);
+          selectedSat = chosen.sat;
+          selectedLabels = chosen.labels;
+          setLayers(provider, selectedSat, selectedLabels);
+
+          const center = config.center || { lat: 31.2304, lng: 121.4737 };
+          const zoom =
+            Number.isFinite(config.zoom) && config.zoom >= 0 && config.zoom <= 22
+              ? config.zoom
+              : 12;
+          map.setView([center.lat, center.lng], zoom);
+          showHint("已回到默认位置");
+        });
+
+        function locateNow(reason) {
+          if (!navigator.geolocation) {
+            showHint("此浏览器不支持定位");
+            return;
+          }
+          setStatus("定位中…");
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              const { latitude, longitude } = pos.coords;
+              const targetZoom = Math.max(map.getZoom(), config.autoLocateZoom || 14);
+              map.setView([latitude, longitude], targetZoom);
+              setStatus("已定位");
+              showHint(reason === "auto" ? "已定位到当前位置" : "已定位到当前位置");
+
+              if (config.report.enabled && config.report.sendOnLocate) {
+                await reportLocation({
+                  ts: new Date().toISOString(),
+                  reason,
+                  deviceId,
+                  coords: {
+                    lat: latitude,
+                    lng: longitude,
+                    accuracy: pos.coords.accuracy,
+                    altitude: pos.coords.altitude,
+                    heading: pos.coords.heading,
+                    speed: pos.coords.speed
+                  },
+                  map: {
+                    zoom: map.getZoom(),
+                    provider: providerEl.value,
+                    mode: selectedMode
+                  }
+                });
+              }
+            },
+            (err) => {
+              console.warn(err);
+              setStatus("定位失败");
+              showHint("定位失败：请允许定位权限");
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+          );
+        }
+
+        locateBtn.addEventListener("click", () => locateNow("manual"));
+
+        // Attempt auto-locate (iOS may still require a user gesture; if blocked, user can tap “定位”).
+        try {
+          const key = "mapViewer:autoLocateDone";
+          const already =
+            initialAutoLocate === "once" && localStorage.getItem(key) === "1";
+          if (!already && initialAutoLocate !== "off") {
+            setTimeout(() => locateNow("auto"), 0);
+            if (initialAutoLocate === "once") localStorage.setItem(key, "1");
+          }
+        } catch (_) {
+          // ignore localStorage errors
+        }
+
+        // Periodic reporting (optional; best-effort; iOS may throttle timers in background).
+        if (config.report.enabled && config.report.intervalMinutes > 0) {
+          let last = 0;
+          const intervalMs = config.report.intervalMinutes * 60 * 1000;
+          setInterval(() => {
+            const now = Date.now();
+            if (document.visibilityState !== "visible") return;
+            if (now - last < intervalMs - 1000) return;
+            last = now;
+            locateNow("hourly");
+          }, 15 * 1000);
+        }
+
+        function shareUrl() {
+          const c = map.getCenter();
+          const z = map.getZoom();
+          const provider = providerEl.value;
+          const params = new URLSearchParams(location.search);
+          params.set("lat", c.lat.toFixed(6));
+          params.set("lng", c.lng.toFixed(6));
+          params.set("z", String(z));
+          params.set("provider", provider);
+          params.set("mode", selectedMode);
+          params.set("sat", selectedSat);
+          if (selectedLabels) params.set("labels", selectedLabels);
+          else params.delete("labels");
+          if (provider === "TianDiTu" && tianDiTuKey) params.set("tianDiTuKey", tianDiTuKey);
+          const origin = location.origin === "null" ? "" : location.origin;
+          const url = `${origin}${location.pathname}?${params.toString()}`;
+          return url;
+        }
+
+        shareBtn.addEventListener("click", async () => {
+          const url = shareUrl();
+          try {
+            await navigator.clipboard.writeText(url);
+            showHint("链接已复制");
+          } catch (e) {
+            // Fallback
+            const ta = document.createElement("textarea");
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            showHint("链接已复制");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

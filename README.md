@@ -44,6 +44,15 @@ There are more examples at the examples folder like below.
 
 Above all maps use Coordinate Reference Systems (CRS), which are EPSG:3857. 
 
+## Simple iPad Viewer (this repo)
+
+This fork includes a single-file viewer at `index.html` for quick use on iPad:
+
+- Pinch/zoom/pan (Leaflet)
+- Satellite/road toggle, reset-to-default, locate button
+- Optional location reporting to your own server (see `app-config.js`)
+
+
 <a name="providers"></a>
 ## Providers
 
