@@ -6,7 +6,7 @@
 window.APP_CONFIG = {
   title: "Map Viewer",
   default: {
-    center: { lat: 31.2304, lng: 121.4737 }, // Shanghai
+    center: { lat: 39.908722, lng: 116.397499 }, // Beijing Tiananmen
     zoom: 12,
     provider: "GaoDe",
     mode: "sat", // "sat" (satellite) or "road"
