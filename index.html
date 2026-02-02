@@ -188,7 +188,8 @@
           width: 100%;
         }
         .panel.controls {
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
           gap: 8px;
           padding: 10px;
         }
@@ -196,12 +197,19 @@
           display: none;
         }
         .panel.controls select {
-          flex: 1 1 160px;
           min-width: 0;
+          width: 100%;
+        }
+        .panel.controls #provider {
+          grid-column: 1 / -1;
+        }
+        .panel.controls #mode {
+          grid-column: 1 / -1;
         }
         .panel.controls button {
-          flex: 1 1 92px;
           min-width: 0;
+          width: 100%;
+          padding: 8px 8px;
         }
         .panel.controls .hz-text {
           font-size: 14px;
