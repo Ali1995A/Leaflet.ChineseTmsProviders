@@ -50,7 +50,6 @@ This fork includes a single-file viewer at `index.html` for quick use on iPad:
 
 - Pinch/zoom/pan (Leaflet)
 - Satellite/road toggle, reset-to-default, locate button
-- Optional location reporting to your own server (see `app-config.js`)
 
 
 <a name="providers"></a>
