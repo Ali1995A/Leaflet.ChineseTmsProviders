@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
   // You can override this in Vercel env vars (recommended) with:
   //   VPS_LOC_ENDPOINT=https://loc.maps.linktime.link/loc
   const upstream =
-    process.env.VPS_LOC_ENDPOINT || "http://142.171.179.15:8787/loc";
+    process.env.VPS_LOC_ENDPOINT || "http://loc.maps.linktime.link/loc";
   const token = process.env.VPS_LOC_TOKEN;
   if (!token) {
     sendJson(res, 500, { error: "missing_token" });
