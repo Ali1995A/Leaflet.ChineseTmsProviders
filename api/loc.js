@@ -1,11 +1,28 @@
-export default async function handler(req, res) {
+function sendJson(res, statusCode, obj) {
+  res.statusCode = statusCode;
+  res.setHeader("content-type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(obj));
+}
+
+async function readJsonBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string") return JSON.parse(req.body);
+
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  return JSON.parse(raw || "{}");
+}
+
+module.exports = async (req, res) => {
   if (req.method === "OPTIONS") {
-    res.status(204).end();
+    res.statusCode = 204;
+    res.end();
     return;
   }
 
   if (req.method !== "POST") {
-    res.status(405).json({ error: "method_not_allowed" });
+    sendJson(res, 405, { error: "method_not_allowed" });
     return;
   }
 
@@ -15,19 +32,16 @@ export default async function handler(req, res) {
   const upstream = process.env.VPS_LOC_ENDPOINT || "http://142.171.179.15/loc";
   const token = process.env.VPS_LOC_TOKEN;
   if (!token) {
-    res.status(500).json({ error: "missing_token" });
+    sendJson(res, 500, { error: "missing_token" });
     return;
   }
 
-  let payload = req.body;
-  // Some Vercel configurations may pass raw body as string.
-  if (typeof payload === "string") {
-    try {
-      payload = JSON.parse(payload);
-    } catch {
-      res.status(400).json({ error: "bad_json" });
-      return;
-    }
+  let payload;
+  try {
+    payload = await readJsonBody(req);
+  } catch {
+    sendJson(res, 400, { error: "bad_json" });
+    return;
   }
 
   try {
@@ -47,8 +61,10 @@ export default async function handler(req, res) {
     });
 
     const text = await r.text();
-    res.status(r.status).setHeader("content-type", "application/json").send(text);
-  } catch (e) {
-    res.status(502).json({ error: "upstream_failed" });
+    res.statusCode = r.status;
+    res.setHeader("content-type", "application/json; charset=utf-8");
+    res.end(text);
+  } catch {
+    sendJson(res, 502, { error: "upstream_failed" });
   }
-}
+};
