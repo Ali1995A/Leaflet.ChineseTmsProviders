@@ -14,6 +14,13 @@
       crossorigin=""
     />
     <style>
+      @font-face {
+        font-family: "PinyinFont";
+        src: url("./fonts/PinyinFont.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
       html,
       body {
         height: 100%;
@@ -55,6 +62,28 @@
           "PingFang SC", "Microsoft YaHei", sans-serif;
         opacity: 0.9;
       }
+      .bilingual {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 2px;
+        align-items: center;
+      }
+      .hz-text {
+        font: 15px/1.1 system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-weight: 650;
+        letter-spacing: 0.2px;
+      }
+      .pinyin-text {
+        font-family: "PinyinFont", ui-sans-serif, system-ui, -apple-system,
+          Segoe UI, Roboto, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: 13px;
+        line-height: 1.1;
+        letter-spacing: 0.4px;
+        font-variant-ligatures: none;
+        font-feature-settings: "liga" 0, "calt" 0;
+        opacity: 0.92;
+      }
       .panel select,
       .panel button {
         font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial,
@@ -63,6 +92,12 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(255, 255, 255, 0.06);
         color: #fff;
+        padding: 8px 10px;
+      }
+      .panel button .bilingual {
+        align-items: center;
+      }
+      .panel button {
         padding: 8px 10px;
       }
       .panel button {
@@ -91,21 +126,35 @@
   <body>
     <div class="topbar">
       <div class="panel" role="group" aria-label="Map controls">
-        <label for="provider">图源</label>
+        <label for="provider">
+          <span class="bilingual">
+            <span class="hz-text">图源</span>
+            <span class="pinyin-text" data-pinyin="túyuán"></span>
+          </span>
+        </label>
         <select id="provider">
-          <option value="GaoDe">高德</option>
-          <option value="TianDiTu">天地图</option>
-          <option value="Google">Google(google.cn)</option>
-          <option value="OSM">OSM</option>
+          <option value="GaoDe" data-hz="高德" data-py="gāodé"></option>
+          <option value="TianDiTu" data-hz="天地图" data-py="tiāndìtú"></option>
+          <option
+            value="Google"
+            data-hz="谷歌"
+            data-py="gǔgē"
+          ></option>
+          <option value="OSM" data-hz="OSM" data-py="ōu ès ēm"></option>
         </select>
-        <label for="mode">模式</label>
+        <label for="mode">
+          <span class="bilingual">
+            <span class="hz-text">模式</span>
+            <span class="pinyin-text" data-pinyin="móshì"></span>
+          </span>
+        </label>
         <select id="mode">
-          <option value="sat">卫星</option>
-          <option value="road">道路</option>
+          <option value="sat" data-hz="卫星" data-py="wèixīng"></option>
+          <option value="road" data-hz="道路" data-py="dàolù"></option>
         </select>
-        <button id="reset" type="button">复位</button>
-        <button id="locate" type="button">定位</button>
-        <button id="share" type="button">复制链接</button>
+        <button id="reset" type="button"></button>
+        <button id="locate" type="button"></button>
+        <button id="share" type="button"></button>
       </div>
       <div class="panel" aria-label="Status">
         <span id="status" style="font: 13px/1.2 system-ui">就绪</span>
@@ -137,6 +186,38 @@
           Google: { sat: "Satellite.Map", labels: "Satellite.Annotion" },
           OSM: { sat: "Normal.Map", labels: null }
         };
+
+        function normalizePinyin(text) {
+          if (!text) return "";
+          // 1) NFD to decompose ā/á/ǎ/à into a + combining mark.
+          // 2) Replace 'a' with IPA open-a 'ɑ' so it never falls back to odd glyphs.
+          return text.normalize("NFD").replace(/a/g, "ɑ");
+        }
+
+        function setBilingualButton(btn, hanzi, pinyin) {
+          btn.innerHTML =
+            `<span class=\"bilingual\">` +
+            `<span class=\"hz-text\">${hanzi}</span>` +
+            `<span class=\"pinyin-text\">${normalizePinyin(pinyin)}</span>` +
+            `</span>`;
+        }
+
+        // Fill all bilingual labels/options/buttons.
+        document.querySelectorAll("[data-pinyin]").forEach((el) => {
+          el.textContent = normalizePinyin(el.getAttribute("data-pinyin"));
+        });
+        document.querySelectorAll("select option[data-hz][data-py]").forEach((opt) => {
+          opt.textContent = `${opt.getAttribute("data-hz")} ${normalizePinyin(
+            opt.getAttribute("data-py")
+          )}`;
+        });
+        setBilingualButton(document.getElementById("reset"), "复位", "fùwèi");
+        setBilingualButton(document.getElementById("locate"), "定位", "dìngwèi");
+        setBilingualButton(
+          document.getElementById("share"),
+          "复制链接",
+          "fùzhì liànjiē"
+        );
 
         function setStatus(text) {
           statusEl.textContent = text;
