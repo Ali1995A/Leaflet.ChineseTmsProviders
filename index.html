@@ -176,11 +176,49 @@
         border: 1px solid rgba(255, 77, 166, 0.22) !important;
         box-shadow: var(--shadow) !important;
       }
+
+      /* iPhone portrait: prevent topbar overflow */
+      @media (max-width: 430px) {
+        .topbar {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+        }
+        .panel {
+          width: 100%;
+        }
+        .panel.controls {
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 10px;
+        }
+        .panel.controls label {
+          display: none;
+        }
+        .panel.controls select {
+          flex: 1 1 160px;
+          min-width: 0;
+        }
+        .panel.controls button {
+          flex: 1 1 92px;
+          min-width: 0;
+        }
+        .panel.controls .hz-text {
+          font-size: 14px;
+        }
+        .panel.controls .pinyin-text {
+          font-size: 12px;
+        }
+        .panel.status {
+          justify-content: center;
+          padding: 8px 10px;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="topbar">
-      <div class="panel" role="group" aria-label="Map controls">
+      <div class="panel controls" role="group" aria-label="Map controls">
         <label for="provider">
           <span class="bilingual">
             <span class="hz-text">图源</span>
@@ -211,7 +249,7 @@
         <button id="locate" type="button"></button>
         <button id="share" type="button"></button>
       </div>
-      <div class="panel" aria-label="Status">
+      <div class="panel status" aria-label="Status">
         <span id="status" style="font: 13px/1.2 system-ui">就绪</span>
       </div>
     </div>
