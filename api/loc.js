@@ -29,7 +29,8 @@ module.exports = async (req, res) => {
   // For maximum reliability, default to the VPS origin over HTTP.
   // You can override this in Vercel env vars (recommended) with:
   //   VPS_LOC_ENDPOINT=https://loc.maps.linktime.link/loc
-  const upstream = process.env.VPS_LOC_ENDPOINT || "http://142.171.179.15/loc";
+  const upstream =
+    process.env.VPS_LOC_ENDPOINT || "http://142.171.179.15:8787/loc";
   const token = process.env.VPS_LOC_TOKEN;
   if (!token) {
     sendJson(res, 500, { error: "missing_token" });
@@ -49,11 +50,6 @@ module.exports = async (req, res) => {
       "content-type": "application/json",
       authorization: `Bearer ${token}`
     };
-    // When calling the VPS by IP, ensure nginx routes to the correct vhost.
-    if (upstream.startsWith("http://142.171.179.15/")) {
-      headers.host = "loc.maps.linktime.link";
-    }
-
     const r = await fetch(upstream, {
       method: "POST",
       headers,
